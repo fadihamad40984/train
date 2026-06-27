@@ -133,7 +133,6 @@ function renderDashboard() {
   const doneFaqs = Object.keys(progress.faqs).filter(k => progress.faqs[k]).length;
 
   $('#dashboardStats').innerHTML = `
-    <p style="margin-bottom:1rem"><span class="badge verified">✓</span></p>
     <div class="quick-ref">
       <div class="quick-ref-item"><div class="num">${d.errorCodes.length}</div><div class="label">كود خطأ (كامل)</div></div>
       <div class="quick-ref-item"><div class="num">${d.errorCodes.filter(c => c.common).length}</div><div class="label">كود شائع</div></div>
@@ -164,19 +163,7 @@ function renderDashboard() {
       </div>
     </div>
     <div class="card" style="margin-top:0.5rem">
-      <h3>ملفات التدريب الممسوحة بالكامل</h3>
-      <div class="source-list">
-        ${d.trainingSources.map(s => `
-          <div class="source-item">
-            <div class="source-item-header">
-              <div class="source-file">📄 ${s.file}</div>
-              <span class="source-count">✓ ${s.count}</span>
-            </div>
-            <div class="source-label">${s.label}</div>
-            <div class="source-items">${s.items}</div>
-          </div>
-        `).join('')}
-      </div>
+
     </div>
   `;
 }
