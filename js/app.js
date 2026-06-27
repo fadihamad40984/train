@@ -133,7 +133,7 @@ function renderDashboard() {
   const doneFaqs = Object.keys(progress.faqs).filter(k => progress.faqs[k]).length;
 
   $('#dashboardStats').innerHTML = `
-    <p style="margin-bottom:1rem"><span class="badge verified">✓ تم التحقق من المصادر الأصلية (PDF & DOCX)</span></p>
+    <p style="margin-bottom:1rem"><span class="badge verified">✓</span></p>
     <div class="quick-ref">
       <div class="quick-ref-item"><div class="num">${d.errorCodes.length}</div><div class="label">كود خطأ (كامل)</div></div>
       <div class="quick-ref-item"><div class="num">${d.errorCodes.filter(c => c.common).length}</div><div class="label">كود شائع</div></div>
