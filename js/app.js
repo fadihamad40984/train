@@ -17,6 +17,9 @@ let progress = loadProgress();
 let currentSection = 'dashboard';
 let errorFilter = '';
 let errorFilterMode = 'all';
+let searchResultsCache = [];
+let searchActiveIndex = -1;
+let searchDebounceTimer = null;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -45,13 +48,51 @@ function toggleTheme() {
 }
 
 function bindEvents() {
-  $('#globalSearch').addEventListener('input', handleSearch);
-  $('#globalSearch').addEventListener('focus', () => {
-    if ($('#globalSearch').value.trim()) handleSearch({ target: $('#globalSearch') });
+  const searchInput = $('#globalSearch');
+  const searchClear = $('#searchClear');
+  const searchResults = $('#searchResults');
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => runSearch(searchInput.value), 180);
+    searchClear.hidden = !searchInput.value.trim();
   });
+
+  searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim()) runSearch(searchInput.value);
+  });
+
+  searchInput.addEventListener('keydown', handleSearchKeydown);
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.hidden = true;
+    hideSearchResults();
+    searchInput.focus();
+  });
+
+  searchResults.addEventListener('click', (e) => {
+    const item = e.target.closest('.search-result-item');
+    if (!item || item.dataset.empty) return;
+    goToResult(item.dataset.section, item.dataset.index);
+  });
+
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-box')) hideSearchResults();
   });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    }
+    if (e.key === 'Escape' && document.activeElement === searchInput) {
+      hideSearchResults();
+      searchInput.blur();
+    }
+  });
+
   $('#menuToggle').addEventListener('click', toggleSidebar);
   $('#sidebarOverlay').addEventListener('click', closeSidebar);
   $('#themeToggle').addEventListener('click', toggleTheme);
@@ -498,91 +539,219 @@ function updateProgress() {
   $('#progressLabel').textContent = `${done} من ${total} وحدة مكتملة`;
 }
 
-function handleSearch(e) {
-  const q = e.target.value.trim().toLowerCase();
-  if (!q) { hideSearchResults(); return; }
+function normalizeSearchText(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function highlightMatch(text, query) {
+  const safe = escapeHtml(text);
+  if (!query) return safe;
+  const lowerText = text.toLowerCase();
+  const lowerQ = query.toLowerCase();
+  let idx = lowerText.indexOf(lowerQ);
+  let len = query.length;
+  if (idx === -1) {
+    const normText = normalizeSearchText(text);
+    const normQ = normalizeSearchText(query);
+    idx = normText.indexOf(normQ);
+    if (idx === -1) return safe;
+    len = normQ.length;
+  }
+  return `${escapeHtml(text.slice(0, idx))}<mark>${escapeHtml(text.slice(idx, idx + len))}</mark>${escapeHtml(text.slice(idx + len))}`;
+}
+
+function runSearch(rawQuery) {
+  const q = normalizeSearchText(rawQuery);
+  if (!q) {
+    hideSearchResults();
+    return;
+  }
 
   const results = [];
-  const addResults = (items, section, app, sectionId) => {
+  const match = (text) => normalizeSearchText(text).includes(q);
+
+  const pushFaq = (items, section, app, sectionId, type) => {
     items.forEach((item, i) => {
-      if (item.q.toLowerCase().includes(q) || item.a.toLowerCase().includes(q)) {
-        results.push({ q: item.q, a: item.a, app, section, sectionId, index: i });
+      if (match(item.q) || match(item.a)) {
+        results.push({ q: item.q, a: item.a, app, section, sectionId, index: i, type });
       }
     });
   };
 
-  addResults(TRAINING_DATA.posFaq, 'أسئلة POS', 'نيوكاش', 'pos-faq');
-  addResults(TRAINING_DATA.softPosGuide, 'Soft POS', 'نيوكاش', 'softpos-guide');
-  addResults(TRAINING_DATA.cardsFaq, 'البطاقات', 'نيوكاش', 'cards-faq');
-  if (TRAINING_DATA.serviceCenters) {
-    addResults(TRAINING_DATA.serviceCenters.items, 'مراكز الخدمات', 'نيوكاش', 'service-centers');
-  }
+  pushFaq(TRAINING_DATA.posFaq, 'أسئلة POS', 'نيوكاش', 'pos-faq', 'neocash');
+  pushFaq(TRAINING_DATA.softPosGuide, 'دليل Soft POS', 'نيوكاش', 'softpos-guide', 'neocash');
+  pushFaq(TRAINING_DATA.cardsFaq, 'أسئلة البطاقات', 'نيوكاش', 'cards-faq', 'neocash');
+  pushFaq(TRAINING_DATA.serviceCenters.items, 'مراكز الخدمات', 'نيوكاش', 'service-centers', 'neocash');
+
+  TRAINING_DATA.serviceFlows.forEach(flow => {
+    const blob = [flow.title, ...flow.purposes, ...flow.questions, ...flow.actions].join(' ');
+    if (match(blob) || match(flow.title)) {
+      results.push({
+        q: flow.title,
+        a: flow.questions[0] || flow.actions[0] || '',
+        app: 'نيوكاش',
+        section: 'توجيه المكالمات',
+        sectionId: 'service-flows',
+        index: null,
+        type: 'neocash'
+      });
+    }
+  });
 
   const y = TRAINING_DATA.yabos;
   const yabosSections = [
-    { items: y.general, label: 'يبوس - عام', id: 'yabos-general' },
-    { items: y.registration, label: 'يبوس - تسجيل', id: 'yabos-registration' },
-    { items: y.idPlus, label: 'يبوس - ID Plus', id: 'yabos-idplus' },
-    { items: y.login, label: 'يبوس - دخول', id: 'yabos-login' },
-    { items: y.points, label: 'يبوس - نقاط', id: 'yabos-points' },
-    { items: y.usage, label: 'يبوس - استخدام', id: 'yabos-usage' },
-    { items: y.bills, label: 'يبوس - فواتير', id: 'yabos-bills' },
-    { items: y.device, label: 'يبوس - جهاز', id: 'yabos-device' },
-    { items: y.profile, label: 'يبوس - ملف شخصي', id: 'yabos-profile' },
-    { items: y.security, label: 'يبوس - أمان', id: 'yabos-security' }
+    { items: y.general, label: 'معلومات عامة', id: 'yabos-general' },
+    { items: y.registration, label: 'التسجيل', id: 'yabos-registration' },
+    { items: y.idPlus, label: 'ID Plus', id: 'yabos-idplus' },
+    { items: y.login, label: 'تسجيل الدخول', id: 'yabos-login' },
+    { items: y.points, label: 'المخصصات', id: 'yabos-points' },
+    { items: y.usage, label: 'استخدام النقاط', id: 'yabos-usage' },
+    { items: y.bills, label: 'دفع الفواتير', id: 'yabos-bills' },
+    { items: y.device, label: 'الجهاز', id: 'yabos-device' },
+    { items: y.profile, label: 'الملف الشخصي', id: 'yabos-profile' },
+    { items: y.security, label: 'الأمان', id: 'yabos-security' }
   ];
-  yabosSections.forEach(s => addResults(s.items, s.label, 'يبوس', s.id));
+  yabosSections.forEach(s => pushFaq(s.items, s.label, 'يبوس', s.id, 'yabos'));
 
   TRAINING_DATA.errorCodes.forEach(e => {
-    if (e.code.includes(q) || e.ar.toLowerCase().includes(q) ||
-        (e.arShort && e.arShort.toLowerCase().includes(q)) ||
-        e.en.toLowerCase().includes(q)) {
-      results.push({ q: `كود ${e.code}: ${e.ar}`, a: e.en, app: 'نيوكاش', section: 'أكواد الأخطاء', sectionId: 'errors' });
+    if (match(e.code) || match(e.ar) || match(e.arShort) || match(e.en)) {
+      results.push({
+        q: `كود ${e.code}: ${e.ar}`,
+        a: e.en,
+        app: 'نيوكاش',
+        section: 'أكواد الأخطاء',
+        sectionId: 'errors',
+        index: null,
+        type: 'error'
+      });
     }
   });
 
   TRAINING_DATA.softPosErrors.forEach(e => {
-    if (e.error.toLowerCase().includes(q) || e.ar.toLowerCase().includes(q)) {
-      results.push({ q: e.error, a: e.ar, app: 'نيوكاش', section: 'Soft POS Errors', sectionId: 'softpos-errors' });
+    if (match(e.error) || match(e.ar)) {
+      results.push({
+        q: e.error,
+        a: e.ar,
+        app: 'نيوكاش',
+        section: 'أخطاء Soft POS',
+        sectionId: 'softpos-errors',
+        index: null,
+        type: 'error'
+      });
     }
   });
 
-  showSearchResults(results.slice(0, 15), q);
+  showSearchResults(results.slice(0, 20), rawQuery.trim());
 }
 
-function showSearchResults(results, q) {
+function handleSearchKeydown(e) {
+  const items = $$('.search-result-item:not([data-empty])');
+  if (!items.length || $('#searchResults').hidden) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    searchActiveIndex = Math.min(searchActiveIndex + 1, items.length - 1);
+    updateSearchActiveItem(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    searchActiveIndex = Math.max(searchActiveIndex - 1, 0);
+    updateSearchActiveItem(items);
+  } else if (e.key === 'Enter' && searchActiveIndex >= 0) {
+    e.preventDefault();
+    const item = items[searchActiveIndex];
+    goToResult(item.dataset.section, item.dataset.index);
+  }
+}
+
+function updateSearchActiveItem(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === searchActiveIndex));
+  items[searchActiveIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+function showSearchResults(results, query) {
   const container = $('#searchResults');
-  if (!results || !results.length) {
-    container.innerHTML = `<div class="search-result-item" style="color:var(--text-muted)">لا توجد نتائج لـ "${q || $('#globalSearch').value}"</div>`;
-    container.classList.add('visible');
+  const box = $('#searchBox');
+  const field = $('.search-field');
+  searchResultsCache = results;
+  searchActiveIndex = results.length ? 0 : -1;
+
+  box.setAttribute('aria-expanded', 'true');
+  field.classList.add('has-results');
+  container.hidden = false;
+
+  if (!results.length) {
+    container.innerHTML = `
+      <div class="search-results-empty" data-empty="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+        <div>لا توجد نتائج لـ <mark>${escapeHtml(query)}</mark></div>
+        <div style="margin-top:0.35rem;font-size:0.8rem">جرّب كود خطأ (مثل 51) أو كلمة مفتاحية أخرى</div>
+      </div>`;
     return;
   }
-  container.innerHTML = results.map(r => `
-    <div class="search-result-item" onclick="goToResult('${r.sectionId}', ${r.index ?? 'null'})">
-      <div class="result-app" style="color:${r.app === 'نيوكاش' ? 'var(--neocash)' : 'var(--yabos)'}">${r.app} — ${r.section}</div>
-      <div class="result-q">${r.q}</div>
-      <div class="result-a">${r.a}</div>
-    </div>
-  `).join('');
-  container.classList.add('visible');
+
+  const typeLabel = { neocash: 'نيوكاش', yabos: 'يبوس', error: 'خطأ' };
+
+  container.innerHTML = `
+    <div class="search-results-header">${results.length} نتيجة — Enter للانتقال، ↑↓ للتنقل</div>
+    ${results.map((r, i) => `
+      <div class="search-result-item${i === 0 ? ' active' : ''}"
+           role="option"
+           data-section="${r.sectionId}"
+           data-index="${r.index ?? ''}"
+           aria-selected="${i === 0}">
+        <div class="result-meta">
+          <span class="result-type ${r.type}">${typeLabel[r.type] || r.app}</span>
+          <span class="result-section">${escapeHtml(r.section)}</span>
+        </div>
+        <div class="result-q">${highlightMatch(r.q, query)}</div>
+        <div class="result-a">${highlightMatch(r.a, query)}</div>
+      </div>
+    `).join('')}
+  `;
 }
 
 function hideSearchResults() {
-  $('#searchResults').classList.remove('visible');
+  const container = $('#searchResults');
+  const box = $('#searchBox');
+  const field = $('.search-field');
+  container.hidden = true;
+  container.innerHTML = '';
+  box.setAttribute('aria-expanded', 'false');
+  field?.classList.remove('has-results');
+  searchActiveIndex = -1;
+  searchResultsCache = [];
 }
 
 function goToResult(sectionId, index) {
   hideSearchResults();
-  $('#globalSearch').value = '';
+  const searchInput = $('#globalSearch');
+  searchInput.value = '';
+  $('#searchClear').hidden = true;
   navigateTo(sectionId);
-  if (index !== null) {
+  if (index !== '' && index !== 'null' && index != null) {
     setTimeout(() => {
       const item = document.querySelector(`[data-faq="${sectionId}-${index}"]`);
       if (item) {
         item.classList.add('open');
         item.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 100);
+    }, 120);
   }
 }
 

@@ -27,15 +27,32 @@
   <main class="main">
     <div class="topbar">
       <button class="menu-toggle" id="menuToggle" aria-label="القائمة">☰</button>
+      <div class="search-box" id="searchBox" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-owns="searchResults">
+        <div class="search-field">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M20 20l-3-3"/>
+          </svg>
+          <input
+            type="search"
+            id="globalSearch"
+            placeholder="ابحث في السيناريوهات، الأكواد، الإجراءات..."
+            autocomplete="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="searchResults"
+            enterkeyhint="search"
+          >
+          <button type="button" class="search-clear" id="searchClear" aria-label="مسح البحث" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="search-results" id="searchResults" role="listbox" hidden></div>
+      </div>
       <button class="theme-toggle" id="themeToggle" aria-label="تبديل الوضع الفاتح والداكن" title="تبديل المظهر">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="globalSearch" placeholder="ابحث في السيناريوهات، الأكواد، الإجراءات..." autocomplete="off">
-        <div class="search-results" id="searchResults"></div>
-      </div>
     </div>
 
     <div class="progress-card">
