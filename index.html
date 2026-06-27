@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مركز تدريب خدمة العملاء — نيوكاش & يبوس</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem('cs-training-theme');
+      var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>📞 مركز التدريب</h1>
+      <p>نيوكاش & يبوس — Customer Service</p>
+    </div>
+    <nav id="sidebarNav"></nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="القائمة">☰</button>
+      <button class="theme-toggle" id="themeToggle" aria-label="تبديل الوضع الفاتح والداكن" title="تبديل المظهر">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="globalSearch" placeholder="ابحث في السيناريوهات، الأكواد، الإجراءات..." autocomplete="off">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-header">
+        <h3 id="progressLabel">تقدم التدريب</h3>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <section class="section active" id="section-dashboard">
+      <div class="section-header">
+        <h2>مرحباً 👋</h2>
+        <p>منصة تدريب خدمة العملاء — كل السيناريوهات والإجراءات في مكان واحد</p>
+      </div>
+      <div id="dashboardStats"></div>
+    </section>
+
+    <!-- Training -->
+    <section class="section" id="section-training"></section>
+
+    <!-- NeoCash -->
+    <section class="section" id="section-workflow"></section>
+    <section class="section" id="section-verification"></section>
+    <section class="section" id="section-service-flows"></section>
+    <section class="section" id="section-pos-faq"></section>
+    <section class="section" id="section-softpos-guide"></section>
+    <section class="section" id="section-cards-faq"></section>
+    <section class="section" id="section-errors"></section>
+    <section class="section" id="section-softpos-errors"></section>
+
+    <!-- Yabos -->
+    <section class="section" id="section-yabos-general"></section>
+    <section class="section" id="section-yabos-registration"></section>
+    <section class="section" id="section-yabos-idplus"></section>
+    <section class="section" id="section-yabos-login"></section>
+    <section class="section" id="section-yabos-points"></section>
+    <section class="section" id="section-yabos-usage"></section>
+    <section class="section" id="section-yabos-bills"></section>
+    <section class="section" id="section-yabos-device"></section>
+    <section class="section" id="section-yabos-profile"></section>
+    <section class="section" id="section-yabos-security"></section>
+    <section class="section" id="section-service-centers"></section>
+    <section class="section" id="section-yabos-escalation"></section>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
